@@ -1,0 +1,10 @@
+unitest
+
+- probar pago normal que cumpla condiciones, que pueda pagar y que este correcto
+- probar validaciones de los pagos
+- ŕpnar realizar un pago, que falle, revertirlo y pagar de vuelta
+
+
+- documentar como si fuera un repo real
+explicar problemas, trade offs, diagramas para implementacion del codigo, si algo es complicado y no queremos ponerlo explicar el por qué
+hacer CD automatico al render
