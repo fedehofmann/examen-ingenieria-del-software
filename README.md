@@ -38,3 +38,4 @@ Suposiciones asumidas (ej: ¿Cuál es el flujo de validación correcto?)
 Diagramas que les parezcan razonables para visualizar, estructura, flujo de información, transiciones de estados o cualquier otro que les parezca razonable.
 Demás puntos que crean relevantes que demuestre comprensión y aplicación de los tópicos vistos en la materia
 
+Elegimos patron de diseño monolítico ya que para los fines prácticos de este proyecto no creemos necesario modularizar las funciones 
