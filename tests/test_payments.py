@@ -28,3 +28,18 @@ def test_pay_credit_card_invalid_limit():
     print("RESPONSE:", response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "FALLIDO"
+
+def test_pay_paypal_valid():
+    # Primero, registra un pago con PayPal
+    response = client.post("/payments/4?amount=4500&payment_method=PAYPAL")
+    print("STATUS:", response.status_code)
+    print("RESPONSE:", response.json())
+    assert response.status_code == 200
+    assert response.json()["message"] == "Payment registered"
+    
+    # Luego, intenta realizar el pago
+    response = client.post("/payments/4/pay")
+    print("STATUS:", response.status_code)
+    print("RESPONSE:", response.json())
+    assert response.status_code == 200
+    assert response.json()["status"] == "STATUS_PAGADO"
