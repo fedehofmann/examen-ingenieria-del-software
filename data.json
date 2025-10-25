@@ -1,1 +1,18 @@
 {}
+{
+    "test_001": {
+        "amount": 1000,
+        "payment_method": "paypal",
+        "status": "REGISTRADO"
+    },
+    "test_002": {
+        "amount": 5000,
+        "payment_method": "tarjeta_credito",
+        "status": "REGISTRADO"
+    },
+    "test_003": {
+        "amount": 2000,
+        "payment_method": "tarjeta_credito",
+        "status": "REGISTRADO"
+    }
+}
