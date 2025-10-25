@@ -13,7 +13,6 @@ STATUS_FALLIDO = "FALLIDO"
 PAYMENT_METHOD_CREDIT = "CREDIT_CARD"
 PAYMENT_METHOD_PAYPAL = "PAYPAL"
 
-
 @app.get("/payments")
 async def get_payments():
     return payments
