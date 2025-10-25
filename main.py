@@ -1,63 +1,94 @@
 from fastapi import FastAPI, HTTPException
-from .storage import save_payment, load_payment, load_all_payments, save_payment_data
-from .helpers import validate_payment, can_update, can_revert
-from .models import *
 
 app = FastAPI()
 
+# Simulación de almacenamiento en memoria
+payments = {}
+
+# Constantes del flujo
+STATUS_REGISTRADO = "REGISTRADO"
+STATUS_PAGADO = "STATUS_PAGADO"
+STATUS_FALLIDO = "FALLIDO"
+
+PAYMENT_METHOD_CREDIT = "CREDIT_CARD"
+PAYMENT_METHOD_PAYPAL = "PAYPAL"
+
+
 @app.get("/payments")
 async def get_payments():
-    return load_all_payments()
+    return payments
+
 
 @app.post("/payments/{payment_id}")
 async def register_payment(payment_id: str, amount: float, payment_method: str):
-    existing = load_payment(payment_id)
-    if existing is not None:
+
+    if payment_id in payments:
         raise HTTPException(status_code=400, detail="Payment already exists")
 
-    save_payment(payment_id, amount, payment_method, STATUS_REGISTRADO)
+    payments[payment_id] = {
+        "amount": amount,
+        "payment_method": payment_method,
+        "status": STATUS_REGISTRADO
+    }
     return {"message": "Payment registered"}
+
 
 @app.post("/payments/{payment_id}/update")
 async def update_payment(payment_id: str, amount: float, payment_method: str):
-    payment = load_payment(payment_id)
-    if payment is None:
+    if payment_id not in payments:
         raise HTTPException(status_code=404, detail="Payment not found")
 
-    if not can_update(payment):
+    if payments[payment_id]["status"] != STATUS_REGISTRADO:
         raise HTTPException(status_code=400, detail="Only REGISTRADO payments can be updated")
 
-    payment[AMOUNT] = amount
-    payment[PAYMENT_METHOD] = payment_method
-    save_payment_data(payment_id, payment)
+    payments[payment_id]["amount"] = amount
+    payments[payment_id]["payment_method"] = payment_method
+
     return {"message": "Payment updated"}
+
 
 @app.post("/payments/{payment_id}/pay")
 async def pay(payment_id: str):
-    payment = load_payment(payment_id)
-    if payment is None:
+    if payment_id not in payments:
         raise HTTPException(status_code=404, detail="Payment not found")
 
-    if payment[STATUS] != STATUS_REGISTRADO:
+    payment = payments[payment_id]
+
+    if payment["status"] != STATUS_REGISTRADO:
         raise HTTPException(status_code=400, detail="Only REGISTRADO payments can be paid")
 
-    if validate_payment(payment):
-        payment[STATUS] = STATUS_PAGADO
-    else:
-        payment[STATUS] = STATUS_FALLIDO
+    valid = False
 
-    save_payment_data(payment_id, payment)
-    return {"status": payment[STATUS]}
+    if payment["payment_method"] == PAYMENT_METHOD_CREDIT:
+        # Validación crédito
+        if payment["amount"] < 10000:
+            registered_credit_count = sum(
+                1 for p in payments.values()
+                if p["payment_method"] == PAYMENT_METHOD_CREDIT and p["status"] == STATUS_REGISTRADO
+            )
+            valid = registered_credit_count <= 1
+
+    elif payment["payment_method"] == PAYMENT_METHOD_PAYPAL:
+        # Validación PayPal
+        valid = payment["amount"] < 5000
+
+    if valid:
+        payment["status"] = STATUS_PAGADO
+    else:
+        payment["status"] = STATUS_FALLIDO
+
+    return {"status": payment["status"]}
+
 
 @app.post("/payments/{payment_id}/revert")
 async def revert(payment_id: str):
-    payment = load_payment(payment_id)
-    if payment is None:
+    if payment_id not in payments:
         raise HTTPException(status_code=404, detail="Payment not found")
 
-    if not can_revert(payment):
+    payment = payments[payment_id]
+
+    if payment["status"] != STATUS_FALLIDO:
         raise HTTPException(status_code=400, detail="Only FALLIDO payments can be reverted")
 
-    payment[STATUS] = STATUS_REGISTRADO
-    save_payment_data(payment_id, payment)
+    payment["status"] = STATUS_REGISTRADO
     return {"message": "Payment reverted"}
