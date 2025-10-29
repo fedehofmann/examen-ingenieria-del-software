@@ -18,6 +18,11 @@ async def get_payments():
     return payments
 
 
+@app.get("/")
+async def health():
+    return {"ok": True}
+
+
 @app.post("/payments/{payment_id}")
 async def register_payment(payment_id: str, amount: float, payment_method: str):
 
