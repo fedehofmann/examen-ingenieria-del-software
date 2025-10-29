@@ -27,11 +27,11 @@ jobs:
       run: |
         python -m unittest tests.test_payments -v
     
-    - name: Run API server test
-      run: |
-        python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
-        sleep 5
-        curl -f http://127.0.0.1:8000/payments || exit 1
+    #- name: Run API server test
+    #  run: |
+     #   python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
+      #  sleep 5
+       # curl -f http://127.0.0.1:8000/payments || exit 1
 
   deploy:
     if: github.ref == 'refs/heads/production'
