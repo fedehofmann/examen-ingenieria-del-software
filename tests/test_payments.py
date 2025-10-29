@@ -1,3 +1,6 @@
+import sys
+sys.path.append('..')
+
 from fastapi.testclient import TestClient
 import os
 import sys
