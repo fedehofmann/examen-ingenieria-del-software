@@ -2,9 +2,9 @@ name: CI/CD
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: [ main , production ]
   push:
-    branches: [ "production" ]
+    branches: [ production ]
 
 jobs:
   test:
@@ -25,7 +25,7 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m unittest discover tests -v
+          pytest tests/test_payments.py -v
 
   production-note:
     if: github.ref == 'refs/heads/production'
