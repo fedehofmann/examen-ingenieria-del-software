@@ -1,47 +1,37 @@
-name: Pipeline CI/CD
+name: CI/CD
 
 on:
-  push:
-    branches: [ main, production ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
+  push:
+    branches: [ "production" ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Run tests
-      run: |
-        python -m unittest tests.test_payments -v
-    
-    - name: Run API server test
-      run: |
-        python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
-        sleep 5
-        curl -f http://127.0.0.1:8000/payments || exit 1
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  deploy:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          python -m unittest discover tests -v
+
+  production-note:
     if: github.ref == 'refs/heads/production'
     needs: test
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to production
-      run: |
-        echo "Deployando API..."
-        echo "API deployada correctamente"
+      - name: Deploy to production
+        run: |
+          echo "Render maneja el Auto Deploy desde 'production'. No se ejecuta deploy aquí."

@@ -7,7 +7,7 @@ payments = {}
 
 # Constantes del flujo
 STATUS_REGISTRADO = "REGISTRADO"
-STATUS_PAGADO = "STATUS_PAGADO"
+STATUS_PAGADO = "PAGADO"
 STATUS_FALLIDO = "FALLIDO"
 
 PAYMENT_METHOD_CREDIT = "CREDIT_CARD"
@@ -16,6 +16,11 @@ PAYMENT_METHOD_PAYPAL = "PAYPAL"
 @app.get("/payments")
 async def get_payments():
     return payments
+
+
+@app.get("/")
+async def health():
+    return {"ok": True}
 
 
 @app.post("/payments/{payment_id}")
