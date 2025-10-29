@@ -1,20 +1,38 @@
+import json
 from fastapi import FastAPI, HTTPException
 
 app = FastAPI()
 
-# Simulación de almacenamiento en memoria
-payments = {}
+# Ruta del archivo de datos
+DATA_PATH = "data.json"
 
 # Constantes del flujo
 STATUS_REGISTRADO = "REGISTRADO"
-STATUS_PAGADO = "STATUS_PAGADO"
+STATUS_PAGADO = "PAGADO"
 STATUS_FALLIDO = "FALLIDO"
 
 PAYMENT_METHOD_CREDIT = "CREDIT_CARD"
 PAYMENT_METHOD_PAYPAL = "PAYPAL"
 
+
+# Función para cargar los pagos desde el archivo JSON
+def load_payments():
+    try:
+        with open(DATA_PATH, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}  # Si el archivo no existe, devolvemos un diccionario vacío
+
+
+# Función para guardar los pagos en el archivo JSON
+def save_payments(payments):
+    with open(DATA_PATH, "w") as f:
+        json.dump(payments, f, indent=4)
+
+
 @app.get("/payments")
 async def get_payments():
+    payments = load_payments()  # Cargamos los pagos desde el archivo
     return payments
 
 
@@ -25,6 +43,7 @@ async def health():
 
 @app.post("/payments/{payment_id}")
 async def register_payment(payment_id: str, amount: float, payment_method: str):
+    payments = load_payments()  # Cargamos los pagos desde el archivo
 
     if payment_id in payments:
         raise HTTPException(status_code=400, detail="Payment already exists")
@@ -34,11 +53,15 @@ async def register_payment(payment_id: str, amount: float, payment_method: str):
         "payment_method": payment_method,
         "status": STATUS_REGISTRADO
     }
+
+    save_payments(payments)  # Guardamos los pagos actualizados en el archivo
     return {"message": "Payment registered"}
 
 
 @app.post("/payments/{payment_id}/update")
 async def update_payment(payment_id: str, amount: float, payment_method: str):
+    payments = load_payments()  # Cargamos los pagos desde el archivo
+
     if payment_id not in payments:
         raise HTTPException(status_code=404, detail="Payment not found")
 
@@ -48,11 +71,14 @@ async def update_payment(payment_id: str, amount: float, payment_method: str):
     payments[payment_id]["amount"] = amount
     payments[payment_id]["payment_method"] = payment_method
 
+    save_payments(payments)  # Guardamos los pagos actualizados en el archivo
     return {"message": "Payment updated"}
 
 
 @app.post("/payments/{payment_id}/pay")
 async def pay(payment_id: str):
+    payments = load_payments()  # Cargamos los pagos desde el archivo
+
     if payment_id not in payments:
         raise HTTPException(status_code=404, detail="Payment not found")
 
@@ -81,11 +107,14 @@ async def pay(payment_id: str):
     else:
         payment["status"] = STATUS_FALLIDO
 
+    save_payments(payments)  # Guardamos los pagos actualizados en el archivo
     return {"status": payment["status"]}
 
 
 @app.post("/payments/{payment_id}/revert")
 async def revert(payment_id: str):
+    payments = load_payments()  # Cargamos los pagos desde el archivo
+
     if payment_id not in payments:
         raise HTTPException(status_code=404, detail="Payment not found")
 
@@ -95,4 +124,5 @@ async def revert(payment_id: str):
         raise HTTPException(status_code=400, detail="Only FALLIDO payments can be reverted")
 
     payment["status"] = STATUS_REGISTRADO
+    save_payments(payments)  # Guardamos los pagos actualizados en el archivo
     return {"message": "Payment reverted"}
