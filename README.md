@@ -1,45 +1,41 @@
 # Examen Ingeniería de Datos
 
-## **Integrantes**
+## Integrantes
 
-* **Matías Caccia**
-* **Federico Hofmann**
-* **Sebastián Mesch Henriques**
+* Matías Caccia
+* Federico Hofmann
+* Sebastián Mesch Henriques
 
----
+# 1. Descripción general
 
-# **1. Descripción general**
-
-Este proyecto implementa una **API REST para gestionar pagos**, desarrollada en **FastAPI (Python 3.11)**.
+Este proyecto consiste en una API REST para la gestión de pagos, desarrollada con FastAPI (Python 3.11).
 La API permite:
 
-* Registrar pagos
-* Actualizar pagos (si están en estado REGISTRADO)
-* Ejecutar validaciones y marcar como PAGADO o FALLIDO
-* Revertir pagos FALLIDO → REGISTRADO
-* Persistir información de manera simple mediante un archivo JSON
+* Registrar nuevos pagos
+* Actualizar pagos siempre que sigan en estado REGISTRADO
+* Ejecutar validaciones y marcar un pago como PAGADO o FALLIDO
+* Revertir pagos de FALLIDO → REGISTRADO
+* Guardar el estado de manera simple usando un archivo JSON
 
-Incluye además:
+Además, incluye:
 
 * Tests unitarios con Pytest
-* Pipeline de **CI/CD** con GitHub Actions
-* Deploy automático mediante Render
-* Documentación extendida sobre diseño, patrones, decisiones y arquitectura
+* Pipeline de CI/CD implementado en GitHub Actions
+* Deploy automatizado mediante Render
+* Documentación sobre decisiones, diseño y patrones utilizados
 
-El objetivo es demostrar criterios profesionales de diseño, colaboración y desarrollo de software.
+El objetivo general es mostrar criterios profesionales de diseño y desarrollo, tanto a nivel técnico como organizacional.
 
----
+# 2. Arquitectura general
 
-# **2. Arquitectura general**
-
-El proyecto mantiene una **estructura monolítica**, pero organizada de manera clara:
+El proyecto se mantiene dentro de una estructura monolítica, pero ordenada y fácil de navegar:
 
 ```
 /
-│ main.py                → Lógica de API, validación y persistencia
-│ data.json              → Persistencia simple para pruebas
-│ requirements.txt       → Dependencias
-│ README.md              → Documentación del proyecto
+│ main.py                → Lógica principal de la API, validaciones y persistencia
+│ data.json              → Archivo simple de almacenamiento
+│ requirements.txt       → Dependencias del proyecto
+│ README.md              → Documentación general
 │
 └── tests/
        test_payments.py
@@ -47,147 +43,132 @@ El proyecto mantiene una **estructura monolítica**, pero organizada de manera c
        ci-cd.yml
 ```
 
-La API es completamente funcional sin necesidad de servicios externos, lo cual permite centrarse en patrones, pruebas y CI/CD.
+No depende de servicios externos, lo que facilita enfocarse en patrones, pruebas y CI/CD.
 
----
+# 3. Decisiones de diseño — Justificación técnica
 
-# **3. Decisiones de diseño — Justificación técnica**
+A continuación se detallan las decisiones más relevantes del proyecto y el porqué detrás de cada una.
 
-A continuación se detallan las decisiones más relevantes y los motivos detrás de cada una, tal como requiere el examen.
+## 3.1 Persistencia en JSON (trade-offs)
 
-## **3.1 Persistencia en JSON (trade-offs)**
-
-Se eligió un archivo `data.json` para persistir el estado por las siguientes razones:
+Se optó por un archivo `data.json` como mecanismo de persistencia.
 
 ### Ventajas
 
-* Simplicidad total del setup (sin instalar Postgres ni SQLite).
-* Facilita el testing al manipular el estado rápidamente.
-* Reduce ruido ajeno al objetivo del examen (enfocado en diseño, CI/CD y patrones).
+* Requiere cero configuración adicional.
+* Permite manipular el estado para pruebas rápidamente.
+* Evita complejidades externas al objetivo principal del examen.
 
 ### ✘ Desventajas
 
-* No soporta concurrencia ni escalabilidad.
-* No hay transacciones reales.
-* Riesgo de corrupción si múltiples procesos escriben simultáneamente.
+* No ofrece garantías de concurrencia ni escalabilidad.
+* No existen transacciones reales.
+* Ante múltiples escrituras simultáneas existe riesgo de corrupción de datos.
 
-## **3.2 Manejo de estados con lógica explícita**
+## 3.2 Manejo de estados con lógica explícita
 
-El flujo del pago requiere transiciones muy concretas. Decidimos representarlas con un pequeño “state machine conceptual” sin separar en módulos (manteniendo monolito). Esto permite cumplir la consigna sin sobreingeniería, pero dejando documentado que existe un modelo de estados bien definido.
+El sistema requiere transiciones de estado muy concretas. Para mantener todo simple, se implementó una “máquina de estados” implícita dentro del propio monolito, sin dividir en módulos adicionales.
+Esto mantiene el código accesible, pero deja claro que hay una lógica de estados bien definida.
 
-## **3.3 Patrones de diseño aplicados**
+## 3.3 Patrones de diseño aplicados
 
-Aunque el examen no requería reescribir todo el monolito, sí exige **comprender e implementar patrones** cuando corresponde. Por eso se extendió el razonamiento y la documentación del diseño actual, justificando por qué estos patrones serían adecuados **si el sistema creciera**.
+Aunque no era obligatorio reestructurar todo el monolito, la consigna pedía justificar decisiones y aplicar patrones cuando correspondiera. Por eso se documentó cómo ciertos patrones encajan en este tipo de problema y por qué son útiles si el proyecto creciera.
 
----
+### Strategy Pattern
 
-### **Strategy Pattern**
+Se utiliza para encapsular las reglas de cada método de pago y evitar condicionales extensos.
 
-Cada método de pago (CREDIT_CARD, PAYPAL) tiene reglas distintas. El patrón Strategy permite encapsularlas y evitar if/else anidados.
+Reglas actuales:
 
-**Reglas implementadas:**
+| Método      | Regla                                               |
+| ----------- | --------------------------------------------------- |
+| CREDIT_CARD | amount < 10000 y solo 1 pago REGISTRADO con tarjeta |
+| PAYPAL      | amount < 5000                                       |
 
-| Método      | Condición                                                     |
-| ----------- | ------------------------------------------------------------- |
-| CREDIT_CARD | amount < 10000 AND no más de 1 pago REGISTRADO usando tarjeta |
-| PAYPAL      | amount < 5000                                                 |
+### Por qué es adecuado
 
-### Justificación
+* La lógica de validación queda separada por método.
+* Permite sumar nuevos métodos sin tocar el endpoint.
+* Facilita el testeo aislado de cada estrategia.
 
-* Aísla la lógica por método.
-* Facilita agregar nuevos métodos sin modificar el endpoint.
-* Permite testear validaciones sin tocar la API.
+## 3.4 Parámetros como Query Params
 
----
-
-## **3.4 Parámetros como query params**
-
-Se respetó lo dado en la consigna:
+Siguiendo exactamente la consigna, el formato utilizado es:
 
 ```
 /payments/{payment_id}?amount=100&payment_method=CREDIT_CARD
 ```
 
-### Justificación
+### Motivos
 
-* Es el formato mostrado en el enunciado.
-* Evita necesidad de modelos Pydantic para request bodies.
-* Simplifica el código al reducir validación y parsing.
+* Es el ejemplo provisto en el enunciado.
+* Evita necesidad de definir modelos Pydantic específicos.
+* Mantiene el desarrollo simple para este examen.
 
----
+# 4. Endpoints
 
-# **4. Endpoints**
-
-(Simplificados aquí; la lista completa está en el enunciado)
+Resumen (la lista completa figura en el enunciado):
 
 | Endpoint                | Método | Descripción                   |
 | ----------------------- | ------ | ----------------------------- |
-| `/payments`             | GET    | Lista todos los pagos         |
-| `/payments/{id}`        | POST   | Registra un pago              |
-| `/payments/{id}/update` | POST   | Actualiza un pago REGISTRADO  |
-| `/payments/{id}/pay`    | POST   | Ejecuta validación y paga     |
+| `/payments`             | GET    | Listar todos los pagos        |
+| `/payments/{id}`        | POST   | Registrar un pago             |
+| `/payments/{id}/update` | POST   | Modificar un pago REGISTRADO  |
+| `/payments/{id}/pay`    | POST   | Validar y procesar un pago    |
 | `/payments/{id}/revert` | POST   | Revertir FALLIDO → REGISTRADO |
 
----
+# 5. Estrategia de testing
 
-# **5. Estrategia de testing**
+La suite de Pytest cubre tanto casos exitosos como fallos esperados.
 
-La suite de tests cubre:
+### Casos positivos
 
-### Casos positivos:
+* Registro de nuevos pagos
+* Pagos válidos con tarjeta y PayPal
+* Updates permitidos
+* Reversiones correctas
 
-* Registro de pagos
-* Pago válido con tarjeta
-* Pago válido con PayPal
-* Update en estado permitido
-* Revert correcto
+### Casos negativos
 
-### Casos negativos:
+* Reglas de validación que deben fallar
+* Restricción de “solo un pago REGISTRADO” por tarjeta
+* Updates no permitidos por estado
+* Reversiones inválidas
+* IDs inexistentes en todos los endpoints
 
-* Pago PayPal inválido
-* Regla de “más de 1 crédito REGISTRADO”
-* Updates no permitidos
-* Revert no permitido
-* IDs inexistentes en cada endpoint
+Esto garantiza:
 
-Esto demuestra:
+* Cobertura completa de las reglas del dominio
+* Manejo adecuado de errores HTTP 400 / 404
+* Validación del estado persistido
 
-* Comprensión de reglas del dominio
-* Cobertura completa de bifurcaciones
-* Validación de errores HTTP 400 / 404
-* Testing de estado persistido
+# 6. CI/CD
 
----
-
-# **6. CI/CD**
-
-El flujo está implementado con GitHub Actions:
+El pipeline está implementado mediante GitHub Actions.
 
 ## Continuous Integration (CI)
 
-Cada **Pull Request hacia main** ejecuta:
+En cada Pull Request a main, se ejecuta:
 
 * Setup de Python 3.11
 * Instalación de dependencias
-* Ejecución de toda la suite de tests
+* Ejecución completa de tests
 
-Esto impide merges que rompan el sistema.
+Esto evita merges que rompan la API.
 
 ## Continuous Deployment (CD)
 
 * La rama `production` está conectada a Render.
-* Cuando hay un push o merge a `production`, el deploy es automático.
-* El workflow aclara que el deploy lo realiza Render (no el workflow).
+* Cualquier push o merge a esa rama dispara un deploy automático.
+* El workflow aclara explícitamente que el deploy final lo hace Render.
 
-### Justificación
+### Razones
 
-* Separación clara entre versiones en desarrollo (`main`) y releases productivos (`production`).
-* Evita deploys accidentales.
-* Cumple exactamente los requisitos del examen.
+* Se separa claramente el trabajo en desarrollo (`main`) del código listo para producción (`production`).
+* Reduce errores humanos en el deployment.
+* Cumple de forma precisa lo pedido en la consigna.
 
----
-
-# **7. Cómo correr el proyecto localmente**
+# 7. Cómo correr el proyecto localmente
 
 ```bash
 python -m venv .venv
@@ -196,30 +177,52 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
----
+# 8. Suposiciones tomadas
 
-# **8. Suposiciones tomadas**
+* Solo existen los métodos de pago CREDIT_CARD y PAYPAL.
+* `payment_id` se interpreta como un string único.
+* No hay concurrencia en el acceso a `data.json`.
+* Las validaciones se mantienen todas en memoria.
+* Los parámetros llegan por query, tal como indica la consigna.
 
-* Los métodos de pago disponibles son solo **CREDIT_CARD** y **PAYPAL**.
-* `payment_id` es string único por pago.
-* No existe concurrencia de escritura en `data.json`.
-* Todas las validaciones se ejecutan en memoria.
-* Los parámetros vienen por Query (según consigna), no por body.
+# 9. Limitaciones y posibles mejoras
 
----
+Aunque la consigna plantea mantener un enfoque monolítico y sencillo, es posible identificar varias líneas de evolución que permitirían llevar el proyecto a un nivel más robusto y cercano a un entorno real.
 
-# 🚀 **9. Limitaciones y mejoras futuras**
+### 9.1. Separar la arquitectura en capas (API / Servicios / Dominio)
 
-Aunque la consigna exige un monolito simple, algunas mejoras posibles a contemplar:
+La lógica del proyecto está actualmente centralizada para mantener simplicidad. Aun así, dividirla en capas permitiría:
 
-### Migrar JSON → Base de datos (SQLite / Postgres)
+* Encapsular reglas de negocio en un módulo dedicado (Dominio).
+* Aislar la lógica de acceso a datos del resto del sistema (Persistencia).
+* Mantener controladores del API más limpios y fáciles de leer.
+* Facilitar testeo unitario sin necesidad de moquear todo el sistema.
 
-### Separar en capas (API / Servicios / Dominio / Persistencia)
+Una arquitectura en capas también facilita el crecimiento y la colaboración entre desarrolladores.
 
-### Implementar Strategy y State en archivos dedicados
+### 9.2. Extraer Strategy y State a módulos independientes
 
-### Incorporar logs estructurados
+Aunque los patrones están aplicados conceptualmente, se encuentran dentro del monolito. Llevarlos a módulos propios permite:
 
-### Test de integración con cliente HTTP real
+* Documentar explícitamente los comportamientos y transiciones.
+* Hacer que la lógica de validación sea extensible simplemente agregando clases.
+* Permitir que nuevos métodos o estados se implementen sin modificar código existente.
+* Reforzar la separación de responsabilidades y mejorar testabilidad.
 
-### Manejo de concurrencia en las escrituras
+Esto también favorece la incorporación futura de comportamientos dinámicos o configurables.
+
+### 9.3. Incorporar logs estructurados
+
+El proyecto aún carece de un sistema de registro estructurado. Incluirlo aportaría:
+
+* Trazabilidad clara de cada operación ejecutada.
+* Diagnóstico más sencillo ante errores o comportamientos inesperados.
+* Posibilidad de integrar herramientas de monitoreo o dashboards.
+* Mejor comprensión del flujo en entornos productivos.
+
+### 9.4. Incorporar tests de integración completos
+
+* Validar el sistema como un todo, incluyendo rutas, parámetros y serialización.
+* Detectar inconsistencias entre controladores y lógica interna.
+* Garantizar que la API se comporte de acuerdo al contrato esperado por clientes externos.
+* Aumentar la robustez del pipeline de CI.
